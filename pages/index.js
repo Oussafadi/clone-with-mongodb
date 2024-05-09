@@ -2,6 +2,7 @@
 import Head from "next/head";
 import { useUser } from '@auth0/nextjs-auth0/client';
 import Link from "next/link";
+import { getSession } from "@auth0/nextjs-auth0";
 
 export default function Home() {
   const {user,error,isLoading} = useUser();
@@ -11,20 +12,40 @@ export default function Home() {
 
 
   return (
-    <div>
+    <>
       <Head>
-        <title>Next JS ChatGPT Starter</title>
+        <title>Clone with MongoDB</title>
       </Head>
-      <h1>Welcome to the Next JS &amp; ChatGPT Starter</h1>
-      { user && 
+      <div className="flex justify-center items-center  min-h-screen w-full text-white bg-gray-700 ">
+      { !!user && 
             <Link href="/api/auth/logout">
             Logout
             </Link>
       }
       { !user && 
-            <Link href="/api/auth/login">
+         <>
+            <Link href="/api/auth/login" className=" btn ">
             Login</Link>
+            <Link href="/api/auth/sign" className=" btn " >
+            Sign Up</Link>
+          </>
       }
-    </div>
+      </div>
+    </>
   );
 }
+
+export const getServerSideProps = async (ctx) => {
+  const session = getSession(ctx.req , ctx.res);
+  if(!!session) {
+    return {
+      redirect: {
+        destination: "/chat"
+      }
+    };
+  }
+
+  return {
+    props: {}
+  };
+};
