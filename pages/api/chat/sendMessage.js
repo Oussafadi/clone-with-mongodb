@@ -7,6 +7,10 @@ export const config = {
 export default async function handle(req) {
     try {
    const  { message } = req.json() ;
+   const initialChatMessage = {
+    role : "system",
+    content : "openai chat robot"
+   }
     const stream = await OpenAIEdgeStream(
         'https://api.openai.com/v1/chat/completions',
         {
@@ -19,7 +23,7 @@ export default async function handle(req) {
             body: JSON.stringify({
                 model: 'gpt-3.5-turbo',
                 stream: true,
-                messages:[{ role: 'user', content: 'message' }],
+                messages:[initialChatMessage, { role: 'user', content: message }],
              } ) 
   
         }

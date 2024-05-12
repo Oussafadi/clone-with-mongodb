@@ -4,6 +4,6 @@
 
 @layer components {
     .btn {
-        @apply rounded-md bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-white "
+        @apply rounded-md bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-white disabled:bg-emerald-300 "
     }
 }
