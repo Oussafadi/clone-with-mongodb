@@ -6,9 +6,9 @@ import { useState } from "react";
 import { v4 as uuid} from "uuid" ;
 
 export default function Chat() {
-   const [ message , setMessage] = useState("");
+   const [message , setMessage] = useState("");
    const [incomingMessage, setIncomingMessage] = useState("");
-   const [ chatMessages , setChatMessages] = useState([]);
+   const [chatMessages , setChatMessages] = useState([]);
    const [generatingResponse, setGeneratingResponse] = useState(false);
 
    const handleSubmit = async (e) => {
@@ -23,6 +23,8 @@ export default function Chat() {
           return chatMessages;
         })
        
+
+      /*  This Api uses Edge function 
         const response = await fetch('/api/chat/sendMessage', {
             method : 'POST',
             headers : {
@@ -31,9 +33,8 @@ export default function Chat() {
              body : JSON.stringify({
               message : message
              })
-        })
-        setMessage("");
-        const data = response.body;
+        });
+          const data = response.body;
         if (!data) {
           return;
         }
@@ -41,7 +42,28 @@ export default function Chat() {
         await streamReader(reader , (message) => {
           setIncomingMessage( s => `${s}${message.content}`);
         })
+       
+        */
+
+         /* This one without Edge function */
+         const response = await fetch('/api/chat/newChat', {
+          method : 'POST',
+          headers : {
+            'content-type' : 'application/json',
+          },
+          body : JSON.stringify({
+            message : message ,
+          })
+         }
+         );
+        
+         const data = await response.json();
+       //  console.log('New Chat :', data);
+
+
+        setMessage("");
         setGeneratingResponse(false);
+       
    }
 
   return (
@@ -50,10 +72,10 @@ export default function Chat() {
         <title>Clone with MongoDB</title>
       </Head>
      
-     <div className="grid h-screen grid-col-[260px_1fr] ">
-          <div>
-           <SideBar />
-          </div>
+     <div className="grid h-screen grid-cols-[260px_1fr] ">
+          
+           <SideBar  />
+         
           <div className=" flex flex-col bg-gray-600 overflow-hidden">
             <div className="flex-1 text-white overflow-scroll ">
               {
