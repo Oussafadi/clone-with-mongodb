@@ -6,4 +6,8 @@
     .btn {
         @apply rounded-md bg-emerald-500 hover:bg-emerald-600 px-4 py-2 text-white disabled:bg-emerald-300 
     }
+
+    .side-bar-item {
+        @apply m-2 p-2 flex items-center gap-4 hover:bg-gray-700 rounded-md text-white
+    }
 }

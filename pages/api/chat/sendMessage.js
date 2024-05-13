@@ -11,6 +11,21 @@ export default async function handle(req) {
     role : "system",
     content : "openai chat robot"
    }
+
+   const response = await fetch(`${req.headers.get("origin")}/api/chat/newChat`, {
+    method : 'POST',
+    headers : {
+      'content-type' : 'application/json',
+       cookie : req.headers.get("cookie"),
+    },
+    body : JSON.stringify({
+      message ,
+    })
+   }
+   );
+    const newChatResponse = await response.json();
+    const chatId = newChatResponse._id;
+
     const stream = await OpenAIEdgeStream(
         'https://api.openai.com/v1/chat/completions',
         {
@@ -26,6 +41,28 @@ export default async function handle(req) {
                 messages:[initialChatMessage, { role: 'user', content: message }],
              } ) 
   
+        },
+         {
+            onBeforeStream : async ({emit}) => {
+                emit(chatId,"newChatId");
+            }
+         } ,
+         {
+            onAfterStream : async ({fullContent}) => {
+            const updateChatResponse = await fetch(`${req.headers.get("origin")}/api/chat/addMessageToChat`, {
+                method : "POST",
+                headers : {
+                    'content-type': 'application/json',
+                     cookie : req.headers.get("cookie"),
+                },
+                body : JSON.stringify( {
+                    chatId,
+                    role : "assistant" , 
+                    content : fullContent ,
+                })
+                
+            })
+            }
         }
     )
      return new Response(stream);

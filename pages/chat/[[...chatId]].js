@@ -1,15 +1,28 @@
+import { getSession } from "@auth0/nextjs-auth0";
 import { SideBar } from "components";
 import { Message } from "components/Message";
+import clientPromise from "lib/mongodb";
+import { ObjectId } from "mongodb";
 import Head from "next/head";
+import { useRouter } from "next/router";
 import { streamReader } from "openai-edge-stream";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { v4 as uuid} from "uuid" ;
 
-export default function Chat() {
+export default function Chat({chatId , title ,messages }) {
    const [message , setMessage] = useState("");
    const [incomingMessage, setIncomingMessage] = useState("");
    const [chatMessages , setChatMessages] = useState([]);
    const [generatingResponse, setGeneratingResponse] = useState(false);
+   const [newChatId,setNewChatId] = useState(null);
+   const router = useRouter();
+
+   useEffect(()=> {
+       if (!generatingResponse && newChatId) {
+        router.push(`/chat/${newChatId}`);
+        setNewChatId(null);
+       }
+   }, [newChatId,generatingResponse,router])
 
    const handleSubmit = async (e) => {
         e.preventDefault() ;
@@ -23,8 +36,7 @@ export default function Chat() {
           return chatMessages;
         })
        
-
-      /*  This Api uses Edge function 
+     
         const response = await fetch('/api/chat/sendMessage', {
             method : 'POST',
             headers : {
@@ -40,12 +52,17 @@ export default function Chat() {
         }
         const reader = data.getReader();
         await streamReader(reader , (message) => {
-          setIncomingMessage( s => `${s}${message.content}`);
+          if(message.event === "newChatId") {
+           setNewChatId(message.content);
+          }else {
+            setIncomingMessage( s => `${s}${message.content}`);
+          }
         })
        
-        */
+        setMessage("");
+        setGeneratingResponse(false);
 
-         /* This one without Edge function */
+         /* This one to test creation of new chat in mongodb 
          const response = await fetch('/api/chat/newChat', {
           method : 'POST',
           headers : {
@@ -59,11 +76,8 @@ export default function Chat() {
         
          const data = await response.json();
        //  console.log('New Chat :', data);
+        */
 
-
-        setMessage("");
-        setGeneratingResponse(false);
-       
    }
 
   return (
@@ -74,7 +88,7 @@ export default function Chat() {
      
      <div className="grid h-screen grid-cols-[260px_1fr] ">
           
-           <SideBar  />
+           <SideBar chatId={chatId} />
          
           <div className=" flex flex-col bg-gray-600 overflow-hidden">
             <div className="flex-1 text-white overflow-scroll ">
@@ -105,3 +119,35 @@ export default function Chat() {
     </>
   );
 }
+
+export const getServerSideProps = async(ctx) => {
+     const chatId = ctx.params?.chatId?.[0] || null ;
+     if (chatId) {
+      const {user} = await getSession(ctx.req,ctx.res);
+      const client = await clientPromise ;
+      const db = clientPromise.db("OpenAI_Clone");
+      const specificChat = await db.collection("chats").find({
+        _id : new ObjectId(chatId) ,
+        userId : user.sub ,
+      })
+
+      return {
+        props: {
+          chatId,
+          title : specificChat.title ,
+          messages : specificChat.messages.map(message => ({
+             ...message ,
+             _id : uuid ,
+          }))
+        }
+       }  
+
+     }
+
+     return {
+       props : {
+
+       }
+     }
+     
+};
