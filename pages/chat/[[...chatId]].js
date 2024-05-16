@@ -15,14 +15,34 @@ export default function Chat({chatId , title ,messages }) {
    const [chatMessages , setChatMessages] = useState([]);
    const [generatingResponse, setGeneratingResponse] = useState(false);
    const [newChatId,setNewChatId] = useState(null);
+   const [fullMessage,setFullMessage] = useState("");
    const router = useRouter();
 
+
+   // redirecting to new chat
    useEffect(()=> {
        if (!generatingResponse && newChatId) {
         router.push(`/chat/${newChatId}`);
         setNewChatId(null);
        }
    }, [newChatId,generatingResponse,router])
+
+   // when the chat changes
+   useEffect(()=> {
+    setChatMessages([]);
+    setNewChatId(null);
+   },[chatId])
+
+   useEffect(()=> {
+          if (!generatingResponse && fullMessage) {
+            setChatMessages(prev => [...prev , {
+              _id : uuid(),
+              role : "assistant",
+              content : fullMessage,
+            }])
+            setFullMessage("");
+          }
+   },[generatingResponse,fullMessage])
 
    const handleSubmit = async (e) => {
         e.preventDefault() ;
@@ -42,7 +62,8 @@ export default function Chat({chatId , title ,messages }) {
             headers : {
               'content-type' : 'application/json'
             },
-             body : JSON.stringify({
+             body : JSON.stringify({ 
+              chatId,
               message : message
              })
         });
@@ -50,35 +71,27 @@ export default function Chat({chatId , title ,messages }) {
         if (!data) {
           return;
         }
+
+        let content = "";
         const reader = data.getReader();
         await streamReader(reader , (message) => {
           if(message.event === "newChatId") {
            setNewChatId(message.content);
           }else {
             setIncomingMessage( s => `${s}${message.content}`);
+            content = content + message.content;
           }
         })
+
+        setFullMessage(content);
        
         setMessage("");
         setGeneratingResponse(false);
-
-         /* This one to test creation of new chat in mongodb 
-         const response = await fetch('/api/chat/newChat', {
-          method : 'POST',
-          headers : {
-            'content-type' : 'application/json',
-          },
-          body : JSON.stringify({
-            message : message ,
-          })
-         }
-         );
-        
-         const data = await response.json();
-       //  console.log('New Chat :', data);
-        */
+        setIncomingMessage("");
 
    }
+
+    const allMessages = [...messages, ...chatMessages];
 
   return (
     <>
@@ -93,7 +106,7 @@ export default function Chat({chatId , title ,messages }) {
           <div className=" flex flex-col bg-gray-600 overflow-hidden">
             <div className="flex-1 text-white overflow-scroll ">
               {
-                chatMessages.map(message => (
+                allMessages.map(message => (
                    <Message key={message._id} role={message.role} content={message.content} />
                 ))
               }

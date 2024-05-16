@@ -33,7 +33,7 @@ export const SideBar = ({chatId}) => {
         chats.map(chat => (
          <Link href={`/chat/${chat._id}`} key={chat._id}
           className={`side-bar-item ${chatId === chat._id ? "bg-gray-700 hover:bg-gray-700" : ""} `}>
-         <FontAwesomeIcon icon={faMessage}/>  {chat.title}
+         <FontAwesomeIcon icon={faMessage}/> <span title={chat.title} className="overflow-hidden text-ellipsis whitespace-nowrap"> {chat.title} </span>
          </Link>
         ))
        }

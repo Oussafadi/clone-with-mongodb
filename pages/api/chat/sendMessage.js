@@ -6,12 +6,34 @@ export const config = {
 
 export default async function handle(req) {
     try {
-   const  { message } = req.json() ;
+   const  { message ,chatId : chatIdFromParam } = req.json() ;
+   let chatId = chatIdFromParam;
    const initialChatMessage = {
     role : "system",
     content : "openai chat robot"
    }
+     let newChatId;
 
+   if(chatId) {
+     // add message to existing chat
+      const response = await fetch( `${req.headers.get("origin")}/api/chat/addMessageToChat`, {
+        method : 'POST',
+        headers : {
+          'content-type' : 'application/json',
+           cookie : req.headers.get("cookie"),
+        },
+        body : JSON.stringify({
+          chatId ,
+          role : "user",
+          content : message,
+        })
+       }) ;
+
+       const json = await response.json();
+       chatMessages = json.chat.messages || [];
+
+
+   }else {
    const response = await fetch(`${req.headers.get("origin")}/api/chat/newChat`, {
     method : 'POST',
     headers : {
@@ -23,8 +45,27 @@ export default async function handle(req) {
     })
    }
    );
+
     const newChatResponse = await response.json();
-    const chatId = newChatResponse._id;
+     chatId = newChatResponse._id;
+     newChatId = newChatResponse._id;
+     chatMessages = json.chat.messages || [];
+}
+
+    const messagesToInclude = [];
+    chatMessages.reverse();
+    let usedTokens = 0 ;
+    for ( let chatMessage of chatMessages ) {
+      const messageTokens = chatMessage.content.length / 4 ;
+      usedTokens = usedTokens + messageTokens ;
+      if ( usedTokens <= 2000 ) {
+        messagesToInclude.push(chatMessage);
+      }else {
+        break;
+      }
+    }
+
+     messagesToInclude.reverse();
 
     const stream = await OpenAIEdgeStream(
         'https://api.openai.com/v1/chat/completions',
@@ -38,13 +79,15 @@ export default async function handle(req) {
             body: JSON.stringify({
                 model: 'gpt-3.5-turbo',
                 stream: true,
-                messages:[initialChatMessage, { role: 'user', content: message }],
+                messages:[initialChatMessage, ...messagesToInclude],
              } ) 
   
         },
          {
             onBeforeStream : async ({emit}) => {
+                if(newChatId) {
                 emit(chatId,"newChatId");
+                }
             }
          } ,
          {
