@@ -7,6 +7,18 @@ export const config = {
 export default async function handle(req) {
     try {
    const  { message ,chatId : chatIdFromParam } = req.json() ;
+     
+     // validation
+     if( !message || typeof message !== "String" || message.length > 200) {
+      return new Response({
+        message : "Message must be less than 200 characters"
+      }, 
+        {
+        status : 422 ,
+
+      })
+     }
+
    let chatId = chatIdFromParam;
    const initialChatMessage = {
     role : "system",
@@ -111,6 +123,13 @@ export default async function handle(req) {
      return new Response(stream);
      
     } catch(e) {
-        console.log("An Error occured while sending the message" , e);
+      return new Response({
+        message : "An Error occured while sending the message"
+      }, 
+        {
+        status : 500 ,
+
+      })
+        //console.log("An Error occured while sending the message" , e);
     }
 }

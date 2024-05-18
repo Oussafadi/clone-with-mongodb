@@ -16,7 +16,10 @@ export default function Chat({chatId , title ,messages }) {
    const [generatingResponse, setGeneratingResponse] = useState(false);
    const [newChatId,setNewChatId] = useState(null);
    const [fullMessage,setFullMessage] = useState("");
+   const [originalChatId,setOriginalChatId] = useState(chatId);
    const router = useRouter();
+
+   const routeHasChanged = chatId !== originalChatId ;
 
 
    // redirecting to new chat
@@ -33,8 +36,9 @@ export default function Chat({chatId , title ,messages }) {
     setNewChatId(null);
    },[chatId])
 
+   // save the newly streamed message to chat messages
    useEffect(()=> {
-          if (!generatingResponse && fullMessage) {
+          if (!generatingResponse && fullMessage && !routeHasChanged) {
             setChatMessages(prev => [...prev , {
               _id : uuid(),
               role : "assistant",
@@ -42,10 +46,11 @@ export default function Chat({chatId , title ,messages }) {
             }])
             setFullMessage("");
           }
-   },[generatingResponse,fullMessage])
+   },[generatingResponse,fullMessage,routeHasChanged])
 
    const handleSubmit = async (e) => {
         e.preventDefault() ;
+        setOriginalChatId(chatId);
         setGeneratingResponse(true);
         setChatMessages( prev => {
           const chatMessages = [...prev, {
@@ -104,15 +109,35 @@ export default function Chat({chatId , title ,messages }) {
            <SideBar chatId={chatId} />
          
           <div className=" flex flex-col bg-gray-600 overflow-hidden">
-            <div className="flex-1 text-white overflow-scroll ">
+            <div className="flex-1 flex flex-col-reverse text-white overflow-scroll ">
+              { !allMessages.length && !incomingMessage && (
+                 <div className="m-auto flex items-center justify-center text-center">
+                 <div>
+                   <FontAwesomeIcon
+                     icon={faRobot}
+                     className="text-6xl text-emerald-200"
+                   />
+                   <h1 className="mt-2 text-4xl font-bold text-white/50">
+                     Ask me a question!
+                   </h1>
+                 </div>
+               </div>
+              )}
+              { !!allMessages.length && (
+              <div className="mb-auto"> 
               {
                 allMessages.map(message => (
                    <Message key={message._id} role={message.role} content={message.content} />
                 ))
               }
-              { !!incomingMessage && (
+              { !!incomingMessage && !routeHasChanged && (
               <Message role="assistant" content={incomingMessage} />
               )}
+              { !!incomingMessage && !!routeHasChanged && ( 
+                <Message role="alert" content={"The chatbot is already responding to you in another chat, only one message at a time please."}/>
+              )}
+              </div>
+              ) }
             </div>
             <footer className="bg-gray-700 p-10 rounded-md ">
              <form onSubmit={handleSubmit} >
@@ -136,13 +161,32 @@ export default function Chat({chatId , title ,messages }) {
 export const getServerSideProps = async(ctx) => {
      const chatId = ctx.params?.chatId?.[0] || null ;
      if (chatId) {
+        let objectId ;
+         try {
+          objectId = new ObjectId(chatId)
+         }catch(e) {
+          return {
+            redirect : {
+              destination : "/chat"
+            }
+          }
+         }
+
       const {user} = await getSession(ctx.req,ctx.res);
       const client = await clientPromise ;
       const db = clientPromise.db("OpenAI_Clone");
       const specificChat = await db.collection("chats").find({
-        _id : new ObjectId(chatId) ,
+        _id : objectId ,
         userId : user.sub ,
       })
+
+      if(!specificChat) {
+        return {
+          redirect : {
+            destination : "/chat"
+          }
+        }
+      }
 
       return {
         props: {

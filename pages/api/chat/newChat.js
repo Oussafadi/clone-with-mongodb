@@ -5,6 +5,14 @@ export default async function handler(req,res) {
    try {
     const { user } = await getSession(req,res);
     const { message } = req.body;
+    // validation
+    if( !message || typeof message !== "String" || message.length > 200) {
+         res.status(422).json({
+            message : " Message required and must be less than 200 characters",
+       })
+       return ;
+       } 
+
     const newUserMessage = {
         role: "user",
         content : message,
